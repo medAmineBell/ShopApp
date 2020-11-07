@@ -1,4 +1,5 @@
 import 'package:ShopApp/providers/auth.dart';
+import 'package:ShopApp/screens/splash_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -12,6 +13,7 @@ import './screens/orders_screen.dart';
 import './screens/user_products_screen.dart';
 import './screens/edit_product_screen.dart';
 import './screens/auth_screen.dart';
+import './helpers/custom_route.dart';
 
 void main() => runApp(MyApp());
 
@@ -24,10 +26,11 @@ class MyApp extends StatelessWidget {
           value: Auth(),
         ),
         ChangeNotifierProxyProvider<Auth, Products>(
-          create: (_) => Products('', []),
+          create: (_) => Products('', '', []),
           update: (_, auth, prevProducts) {
             return Products(
               auth.token,
+              auth.userId,
               prevProducts == null ? [] : prevProducts.items,
             );
           },
@@ -36,10 +39,11 @@ class MyApp extends StatelessWidget {
           value: Cart(),
         ),
         ChangeNotifierProxyProvider<Auth, Orders>(
-          create: (_) => Orders('', []),
+          create: (_) => Orders('', '', []),
           update: (_, auth, prevOrders) {
             return Orders(
               auth.token,
+              auth.userId,
               prevOrders == null ? [] : prevOrders.orders,
             );
           },
@@ -49,11 +53,23 @@ class MyApp extends StatelessWidget {
           builder: (ctx, auth, _) => MaterialApp(
                   title: 'MyShop',
                   theme: ThemeData(
-                    primarySwatch: Colors.purple,
-                    accentColor: Colors.deepOrange,
-                    fontFamily: 'Lato',
-                  ),
-                  home: auth.isAuth ? ProductsOverviewScreen() : AuthScreen(),
+                      primarySwatch: Colors.purple,
+                      accentColor: Colors.deepOrange,
+                      fontFamily: 'Lato',
+                      pageTransitionsTheme: PageTransitionsTheme(builders: {
+                        TargetPlatform.android: CustomPageTransitionBuilder(),
+                        TargetPlatform.iOS: CustomPageTransitionBuilder(),
+                      })),
+                  home: auth.isAuth
+                      ? ProductsOverviewScreen()
+                      : FutureBuilder(
+                          future: auth.tryAutoLogin(),
+                          builder: (ctx, authResultSnapshot) =>
+                              authResultSnapshot.connectionState ==
+                                      ConnectionState.waiting
+                                  ? SplashScreen()
+                                  : AuthScreen(),
+                        ),
                   routes: {
                     ProductDetailScreen.routeName: (ctx) =>
                         ProductDetailScreen(),
